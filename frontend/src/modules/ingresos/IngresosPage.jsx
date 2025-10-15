@@ -1,0 +1,262 @@
+import { useState, useEffect } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
+import Input from '../../components/common/Input';
+import Select from '../../components/common/Select';
+import Table from '../../components/common/Table';
+import Loading from '../../components/common/Loading';
+import { useApp } from '../../context/AppContext';
+import { ingresosService } from '../../services/ingresosService';
+import { empresasService } from '../../services/empresasService';
+import { MONEDAS } from '../../utils/constants';
+import { formatCurrency, formatDate } from '../../utils/formatters';
+
+const IngresosPage = () => {
+  const { mesSeleccionado } = useApp();
+  const [ingresos, setIngresos] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
+  const [kpis, setKpis] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    fecha: new Date().toISOString().split('T')[0],
+    empresa_id: '',
+    descripcion: '',
+    awb: '',
+    moneda: 'USD',
+    monto: '',
+    mes: mesSeleccionado
+  });
+  
+  useEffect(() => {
+    loadData();
+  }, [mesSeleccionado]);
+  
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [ingresosData, empresasData, kpisData] = await Promise.all([
+        ingresosService.getAll(mesSeleccionado),
+        empresasService.getAll(),
+        ingresosService.getKPIs(mesSeleccionado)
+      ]);
+      setIngresos(ingresosData);
+      setEmpresas(empresasData);
+      setKpis(kpisData);
+    } catch (error) {
+      console.error('Error cargando datos:', error);
+      alert('Error al cargar los datos');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    
+    try {
+      await ingresosService.create({
+        ...formData,
+        mes: mesSeleccionado,
+        monto: parseFloat(formData.monto),
+        empresa_id: parseInt(formData.empresa_id)
+      });
+      
+      // Resetear formulario
+      setFormData({
+        fecha: new Date().toISOString().split('T')[0],
+        empresa_id: '',
+        descripcion: '',
+        awb: '',
+        moneda: 'USD',
+        monto: '',
+        mes: mesSeleccionado
+      });
+      
+      // Recargar datos
+      await loadData();
+      alert('Ingreso creado exitosamente');
+    } catch (error) {
+      console.error('Error creando ingreso:', error);
+      alert('Error al crear el ingreso');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  const handleDelete = async (id) => {
+    if (!confirm('¿Está seguro de eliminar este ingreso?')) return;
+    
+    try {
+      await ingresosService.delete(id);
+      await loadData();
+      alert('Ingreso eliminado exitosamente');
+    } catch (error) {
+      console.error('Error eliminando ingreso:', error);
+      alert('Error al eliminar el ingreso');
+    }
+  };
+  
+  const columns = [
+    { key: 'numero', label: 'N°', sortable: true },
+    { key: 'fecha', label: 'Fecha', sortable: true, render: (row) => formatDate(row.fecha) },
+    { key: 'descripcion', label: 'Descripción', sortable: true },
+    { key: 'awb', label: 'AWB', sortable: true },
+    { key: 'moneda', label: 'Moneda', sortable: true },
+    { key: 'monto', label: 'Monto', sortable: true, render: (row) => formatCurrency(row.monto, row.moneda) },
+    { key: 'monto_pen', label: 'Monto PEN', sortable: true, render: (row) => formatCurrency(row.monto_pen, 'PEN') },
+    { 
+      key: 'actions', 
+      label: 'Acciones',
+      render: (row) => (
+        <Button
+          variant="danger"
+          size="sm"
+          icon={Trash2}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete(row.id);
+          }}
+        >
+          Eliminar
+        </Button>
+      )
+    }
+  ];
+  
+  if (loading) return <Loading fullScreen text="Cargando ingresos..." />;
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gtl-gray">Módulo de Ingresos</h1>
+        <div className="text-sm text-gray-600">
+          Mes: <span className="font-semibold">{mesSeleccionado}</span>
+        </div>
+      </div>
+      
+      {/* KPIs */}
+      {kpis && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Ingreso Mensual</p>
+              <p className="text-3xl font-bold text-green-600 mt-2">
+                {formatCurrency(kpis.ingreso_mensual, 'PEN')}
+              </p>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Transacciones</p>
+              <p className="text-3xl font-bold text-blue-600 mt-2">
+                {kpis.num_transacciones}
+              </p>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Ticket Promedio</p>
+              <p className="text-3xl font-bold text-purple-600 mt-2">
+                {formatCurrency(kpis.ticket_promedio, 'PEN')}
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
+      
+      {/* Formulario */}
+      <Card title="Nuevo Ingreso">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Fecha"
+              type="date"
+              required
+              value={formData.fecha}
+              onChange={(e) => setFormData({...formData, fecha: e.target.value})}
+            />
+            
+            <Select
+              label="Cliente"
+              required
+              value={formData.empresa_id}
+              onChange={(e) => setFormData({...formData, empresa_id: e.target.value})}
+              options={empresas.map(emp => ({ value: emp.id, label: emp.nombre }))}
+            />
+            
+            <Input
+              label="Descripción"
+              required
+              value={formData.descripcion}
+              onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+              placeholder="Servicio logístico..."
+            />
+            
+            <Input
+              label="AWB"
+              required
+              value={formData.awb}
+              onChange={(e) => setFormData({...formData, awb: e.target.value})}
+              placeholder="074 7014 xxxx"
+            />
+            
+            <Select
+              label="Moneda"
+              required
+              value={formData.moneda}
+              onChange={(e) => setFormData({...formData, moneda: e.target.value})}
+              options={MONEDAS}
+            />
+            
+            <Input
+              label="Monto"
+              type="number"
+              step="0.01"
+              required
+              value={formData.monto}
+              onChange={(e) => setFormData({...formData, monto: e.target.value})}
+              placeholder="0.00"
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setFormData({
+                fecha: new Date().toISOString().split('T')[0],
+                empresa_id: '',
+                descripcion: '',
+                awb: '',
+                moneda: 'USD',
+                monto: '',
+                mes: mesSeleccionado
+              })}
+            >
+              Limpiar
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              icon={Plus}
+              loading={submitting}
+            >
+              Agregar Ingreso
+            </Button>
+          </div>
+        </form>
+      </Card>
+      
+      {/* Tabla */}
+      <Card title={`Ingresos de ${mesSeleccionado}`} subtitle={`${ingresos.length} registros`}>
+        <Table columns={columns} data={ingresos} />
+      </Card>
+    </div>
+  );
+};
+
+export default IngresosPage;
