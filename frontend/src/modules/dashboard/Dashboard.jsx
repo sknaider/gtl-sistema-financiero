@@ -1,16 +1,20 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, 
   TrendingDown, 
   Calculator,
   CreditCard,
-  BarChart3
+  BarChart3,
+  LayoutDashboard
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import DashboardEjecutivo from './DashboardEjecutivo';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { mesSeleccionado } = useApp();
+  const [vistaActual, setVistaActual] = useState('ejecutivo'); // 'ejecutivo' o 'modulos'
   
   const modules = [
     {
@@ -54,9 +58,40 @@ const Dashboard = () => {
       description: 'Visualizar reportes'
     }
   ];
+
+  if (vistaActual === 'ejecutivo') {
+    return (
+      <div className="space-y-6">
+        {/* Toggle View */}
+        <div className="flex justify-end">
+          <button
+            onClick={() => setVistaActual('modulos')}
+            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            <LayoutDashboard className="h-5 w-5" />
+            <span className="text-sm font-medium">Ver Módulos</span>
+          </button>
+        </div>
+        
+        {/* Dashboard Ejecutivo */}
+        <DashboardEjecutivo />
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-8">
+      {/* Toggle View */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => setVistaActual('ejecutivo')}
+          className="flex items-center space-x-2 px-4 py-2 bg-gtl-red text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          <BarChart3 className="h-5 w-5" />
+          <span className="text-sm font-medium">Ver Dashboard Ejecutivo</span>
+        </button>
+      </div>
+
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-gtl-red rounded-full mb-4">
