@@ -12,7 +12,7 @@ from services.rag_service import get_rag_service
 from services.embedding_service import get_embedding_service
 
 router = APIRouter(tags=["ai-assistant"])
-logger = logging.getLogger("uvicorn.error")
+logger = logging.getLogger(__name__)
 
 class ChatRequest(BaseModel):
     message: str
@@ -138,6 +138,24 @@ def build_rag_context(query: str, mes: str, db: Session) -> str:
         logger.error(f"Error RAG: {e}")
         return ""
 
+
+
+def get_max_tokens(message: str) -> int:
+    """Control inteligente de longitud de respuesta"""
+    words = len(message.split())
+    
+    # Saludo corto
+    if words <= 3:
+        return 50  # 1-2 oraciones
+    
+    # Pregunta específica
+    elif words <= 10:
+        return 200  # 3-4 oraciones
+    
+    # Análisis completo
+    else:
+        return 800  # Respuesta detallada
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, db: Session = Depends(get_db)):
     """Chat con RAG integrado."""
@@ -221,11 +239,13 @@ DATOS:
 
 {rag_context}
 
+
+ LÍMITES:\n - Saludos: 1 oración\n - Preguntas: 3-4 oraciones\n - Sin info no pedida
 Responde en español, Markdown, con cifras específicas."""
         
         resp = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=2000,
+            max_tokens=get_max_tokens(request.message),
             system=system,
             messages=[{"role": "user", "content": request.message}]
         )
