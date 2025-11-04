@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 from fastapi.middleware.cors import CORSMiddleware
 from core.database import engine, Base
 from api.routes import ingresos, costos, utilidades, empresas, pagos, dashboard

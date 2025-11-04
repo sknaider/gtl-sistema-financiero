@@ -12,7 +12,7 @@ from services.rag_service import get_rag_service
 from services.embedding_service import get_embedding_service
 
 router = APIRouter(tags=["ai-assistant"])
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 class ChatRequest(BaseModel):
     message: str
