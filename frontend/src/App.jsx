@@ -7,6 +7,7 @@ import UtilidadesPage from './modules/utilidades/UtilidadesPage';
 import PagosPage from './modules/pagos/PagosPage';
 import GraficosPage from './modules/graficos/GraficosPage';
 import EmpresasPage from './modules/empresas/EmpresasPage';
+import ExcelImport from './modules/excel-import/ExcelImport';
 import ChatButton from './components/common/ChatButton';
 import { AppProvider } from './context/AppContext';
 
@@ -23,6 +24,7 @@ function App() {
             <Route path="pagos" element={<PagosPage />} />
             <Route path="graficos" element={<GraficosPage />} />
             <Route path="empresas" element={<EmpresasPage />} />
+            <Route path="excel-import" element={<ExcelImport />} />
           </Route>
         </Routes>
         <ChatButton />
