@@ -16,7 +16,7 @@ const DashboardEjecutivo = () => {
   const cargarKPIs = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/sistema/api/dashboard/kpis/${mes}`);
+      const response = await axios.get(`/sistema/api/v1/dashboard/kpis/${mes}`);
       setKpis(response.data);
       setError(null);
     } catch (error) {

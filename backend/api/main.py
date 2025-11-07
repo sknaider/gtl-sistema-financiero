@@ -44,3 +44,11 @@ def health_check():
     return {"status": "healthy", "version": "1.0.0", "jarvis": "active"}
 from api.routes import excel_import
 app.include_router(excel_import.router, prefix="/api/v1", tags=["Excel Import"])
+
+# AI Excel routes
+from api.routes import excel_import_ai
+app.include_router(excel_import_ai.router, prefix="/api/v1", tags=["excel-ai"])
+
+# AI Excel routes
+from api.routes import excel_import_ai
+app.include_router(excel_import_ai.router, prefix="/api/v1", tags=["excel-ai"])

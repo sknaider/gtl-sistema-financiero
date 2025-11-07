@@ -104,7 +104,7 @@ export default function ExcelImport() {
       setPreview(null);
       
     } catch (err) {
-      alert('Error: ' + (err.response?.data?.detail || err.message));
+    if (!confirm(`¿Importar TODAS las ${sheets.length} hojas automáticamente?\n\nEsto procesará:\n${sheets.join("\n")}`)) {
     }
     setImportingAll(false);
   };
@@ -242,6 +242,7 @@ export default function ExcelImport() {
                     📄 {file.name} - {sheets.length} hoja{sheets.length > 1 ? 's' : ''}
                   </p>
                   
+                  {/* BOTÓN IMPORTAR TODAS */}
                   {sheets.length > 1 && (
                     <div className="mb-6 p-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg">
                       <button
@@ -439,36 +440,22 @@ export default function ExcelImport() {
             </div>
 
             <div className="flex gap-4 justify-between bg-white rounded-lg shadow-sm p-6">
-              <div className="flex gap-4">
-                <button
-                  onClick={() => { 
-                    setPreview(null); 
-                    setEditedData([]);
-                    setSelectedSheet(null);
-                  }}
-                  className="px-8 py-4 border-2 border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-bold text-lg"
-                >
-                  ← Elegir otra hoja
-                </button>
-                
-                {sheets.length > 1 && (
-                  <button
-                    onClick={handleImportAll}
-                    disabled={importingAll}
-                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 font-bold text-lg flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <Zap size={22} />
-                    {importingAll ? 'Importando...' : `⚡ Importar ${sheets.length} hojas`}
-                  </button>
-                )}
-              </div>
-              
+              <button
+                onClick={() => { 
+                  setPreview(null); 
+                  setEditedData([]);
+                  setSelectedSheet(null);
+                }}
+                className="px-10 py-4 border-2 border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-bold text-lg"
+              >
+                ← Elegir otra hoja
+              </button>
               <button
                 onClick={handleConfirm}
                 className="px-10 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold flex items-center gap-2 text-lg"
               >
                 <CheckCircle size={24} />
-                Importar {preview.registros_validos || editedData.length} registros
+                Importar {preview.registros_validos || editedData.length} registros válidos
               </button>
             </div>
           </div>
