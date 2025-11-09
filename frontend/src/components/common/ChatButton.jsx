@@ -47,7 +47,7 @@ const ChatButton = () => {
     try {
       const response = await axios.post('/sistema/api/ai/chat', {
         message: userMessage,
-        mes: 'SETIEMBRE',
+        mes: 'SETIEMBRE',  // TODO: Obtener del contexto global
         context: {
           current_page: window.location.pathname,
           timestamp: new Date().toISOString()
@@ -95,11 +95,28 @@ const ChatButton = () => {
     handleSend(suggestion);
   };
 
+  /**
+   * Sanitiza y formatea mensajes de manera segura sin XSS
+   * Escapa HTML peligroso antes de aplicar formato markdown
+   */
+  const escapeHtml = (text) => {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
   const formatMessage = (content) => {
-    return content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br/>')
-      .replace(/```bash(.*?)```/gs, '<pre class="bg-gray-800 text-green-400 p-2 rounded text-xs overflow-x-auto">$1</pre>');
+    // Primero escapar todo el HTML peligroso
+    let safe = escapeHtml(content);
+
+    // Luego aplicar formato markdown de manera segura
+    safe = safe
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+      .replace(/\n/g, '<br/>')  // Newlines
+      .replace(/```bash([\s\S]*?)```/g, '<pre class="bg-gray-800 text-green-400 p-2 rounded text-xs overflow-x-auto my-2">$1</pre>')  // Code blocks
+      .replace(/\[(.*?)\]\((https?:\/\/.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">$1</a>');  // Links seguros
+
+    return safe;
   };
 
   return (

@@ -3,6 +3,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 from fastapi.middleware.cors import CORSMiddleware
 from core.database import engine, Base
+from core.config import settings
 from api.routes import ingresos, costos, utilidades, empresas, pagos, dashboard, excel_upload
 from api.routes.ai import assistant, executor
 
@@ -10,17 +11,17 @@ from api.routes.ai import assistant, executor
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Sistema Financiero GTL",
+    title=settings.app_name,
     description="API para gestión financiera GTL Consulting SACS",
-    version="1.0.0",
+    version=settings.app_version,
 )
 
-# CORS
+# CORS - Configuración segura con orígenes permitidos específicos
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins_list,  # ✅ Solo orígenes específicos
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["*"],
 )
 

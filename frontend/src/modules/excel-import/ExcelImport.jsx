@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import { useState } from 'react';
+import api from '../../services/api';
 import { Download, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ExcelImport() {
@@ -13,7 +13,7 @@ export default function ExcelImport() {
 
   const handleDownloadTemplate = async () => {
     try {
-      const res = await axios.get('/api/v1/excel/template', { responseType: 'blob' });
+      const res = await api.get('/v1/excel/template', { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -22,6 +22,7 @@ export default function ExcelImport() {
       link.click();
       link.remove();
     } catch (err) {
+      console.error('Error descargando template:', err);
       alert('Error descargando template');
     }
   };
@@ -29,10 +30,12 @@ export default function ExcelImport() {
   const handleUpload = async () => {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     setLoading(true);
     try {
-      const res = await axios.post('/api/v1/excel/preview', formData);
+      const res = await api.post('/v1/excel/preview', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       setPreview(res.data);
       setEditedData(res.data.preview.map((row, idx) => ({
         ...row,
@@ -41,9 +44,11 @@ export default function ExcelImport() {
       })));
       setCurrentPage(1);
     } catch (err) {
-      alert('Error: ' + err.response?.data?.detail);
+      console.error('Error en preview:', err);
+      alert('Error: ' + (err.response?.data?.detail || 'Error al procesar el archivo'));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleEdit = (index, field, value) => {
@@ -61,13 +66,14 @@ export default function ExcelImport() {
   const handleConfirm = async () => {
     const cleanData = editedData.map(({ _index, _hasError, ...rest }) => rest);
     try {
-      await axios.post('/api/v1/excel/confirm', { registros: cleanData });
+      await api.post('/v1/excel/confirm', { registros: cleanData });
       alert('✅ Datos importados correctamente');
       setPreview(null);
       setFile(null);
       setEditedData([]);
     } catch (err) {
-      alert('Error: ' + err.response?.data?.detail);
+      console.error('Error confirmando import:', err);
+      alert('Error: ' + (err.response?.data?.detail || 'Error al importar los datos'));
     }
   };
 

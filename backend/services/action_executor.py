@@ -9,6 +9,7 @@ from models.ingreso import Ingreso
 from models.costo import Costo
 from models.pago import Pago
 from models.audit_log import AuditLog
+from services.conversion_service import get_usd_to_pen_rate
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class ActionExecutor:
                 awb=data.get("awb"),
                 moneda=data["moneda"],
                 monto=data["monto"],
-                monto_pen=data.get("monto_pen") or (data["monto"] if data["moneda"] == "PEN" else data["monto"] * 3.42),
+                monto_pen=data.get("monto_pen") or (data["monto"] if data["moneda"] == "PEN" else float(data["monto"] * get_usd_to_pen_rate())),
                 mes=data["mes"],
                 numero=self._get_next_numero(db, "ingresos", data["mes"])
             )
@@ -286,7 +287,7 @@ class ActionExecutor:
                 if entity.moneda == "PEN":
                     entity.monto_pen = new_monto
                 else:
-                    entity.monto_pen = new_monto * 3.42  # Tipo de cambio
+                    entity.monto_pen = float(new_monto * get_usd_to_pen_rate())
             
             audit_id = self._log_action(
                 action_type="update",

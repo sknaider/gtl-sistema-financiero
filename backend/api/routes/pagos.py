@@ -1,6 +1,6 @@
 """Pagos API routes - Cuentas por cobrar."""
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 from datetime import date
 from core.database import get_db
@@ -14,18 +14,20 @@ def listar_pagos(
     mes: Optional[str] = None,
     estado: Optional[str] = None,
     skip: int = 0,
-    limit: int = 200,
+    limit: int = Query(default=200, le=1000),  # Max 1000 registros
     db: Session = Depends(get_db)
 ):
     """List pagos with filters."""
-    query = db.query(Pago).join(Empresa)
-    
+    query = db.query(Pago)\
+              .join(Empresa)\
+              .options(joinedload(Pago.empresa))  # ✅ Eager loading para evitar N+1
+
     if mes:
         query = query.filter(Pago.mes == mes)
-    
+
     if estado:
         query = query.filter(Pago.estado == estado)
-    
+
     pagos = query.order_by(Empresa.nombre)\
                  .offset(skip)\
                  .limit(limit)\
@@ -47,7 +49,10 @@ def listar_pagos(
 @router.get("/{pago_id}")
 def obtener_pago(pago_id: int, db: Session = Depends(get_db)):
     """Get single pago."""
-    pago = db.query(Pago).filter(Pago.id == pago_id).first()
+    pago = db.query(Pago)\
+             .options(joinedload(Pago.empresa))\
+             .filter(Pago.id == pago_id)\
+             .first()
     if not pago:
         raise HTTPException(status_code=404, detail="Pago no encontrado")
     
@@ -72,14 +77,17 @@ def actualizar_estado_pago(
     if estado not in ["NO PAGADO", "PAGADO"]:
         raise HTTPException(status_code=400, detail="Estado inválido")
     
-    pago = db.query(Pago).filter(Pago.id == pago_id).first()
+    pago = db.query(Pago)\
+             .options(joinedload(Pago.empresa))\
+             .filter(Pago.id == pago_id)\
+             .first()
     if not pago:
         raise HTTPException(status_code=404, detail="Pago no encontrado")
-    
+
     pago.estado = estado
     if estado == "PAGADO" and fecha_pago:
         pago.fecha_pago = fecha_pago
-    
+
     db.commit()
     db.refresh(pago)
     
