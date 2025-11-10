@@ -11,6 +11,8 @@ class Costo(Base):
     concepto = Column(String(255), nullable=False)
     monto = Column(Numeric(12, 2), nullable=False)
     tipo = Column(String(50), index=True)  # ✅ Agregado índice para filtros por tipo
+    moneda = Column(String(3), default="PEN")  # ✅ Nuevo campo
+    awb = Column(String(50), index=True)  # ✅ Nuevo campo con índice
     mes = Column(String(20), nullable=False, index=True)
     numero = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -19,7 +21,8 @@ class Costo(Base):
     __table_args__ = (
         Index('idx_costo_mes_fecha', 'mes', 'fecha'),
         Index('idx_costo_tipo_mes', 'tipo', 'mes'),
+        Index('idx_costo_awb', 'awb'),  # ✅ Nuevo índice para búsquedas por AWB
     )
-    
+
     def __repr__(self):
         return f"<Costo {self.id}: {self.concepto} - {self.monto}>"

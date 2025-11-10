@@ -121,8 +121,19 @@ def analizar_por_mes(db: Session) -> Dict[str, float]:
 
 def get_kpis_mes(db: Session, mes: str) -> Dict:
     """Get KPIs for specific month."""
-    total = db.query(func.sum(Ingreso.monto_pen))\
+    # Total en PEN
+    total_pen = db.query(func.sum(Ingreso.monto_pen))\
               .filter(Ingreso.mes == mes)\
+              .scalar()
+    
+    # Total USD (solo transacciones en USD)
+    total_usd = db.query(func.sum(Ingreso.monto))\
+              .filter(Ingreso.mes == mes, Ingreso.moneda == 'USD')\
+              .scalar()
+    
+    # Total PEN (solo transacciones en PEN)
+    total_pen_original = db.query(func.sum(Ingreso.monto))\
+              .filter(Ingreso.mes == mes, Ingreso.moneda == 'PEN')\
               .scalar()
     
     count = db.query(func.count(Ingreso.id))\
@@ -133,8 +144,29 @@ def get_kpis_mes(db: Session, mes: str) -> Dict:
             .filter(Ingreso.mes == mes)\
             .scalar()
     
+    # Contar transacciones por moneda
+    count_usd = db.query(func.count(Ingreso.id))\
+              .filter(Ingreso.mes == mes, Ingreso.moneda == 'USD')\
+              .scalar()
+    
+    count_pen = db.query(func.count(Ingreso.id))\
+              .filter(Ingreso.mes == mes, Ingreso.moneda == 'PEN')\
+              .scalar()
+    
+    # Calcular tickets promedio
+    ticket_usd = float(total_usd / count_usd) if count_usd else 0
+    ticket_pen = float(total_pen_original / count_pen) if count_pen else 0
+    
     return {
-        "ingreso_mensual": float(total or 0),
-        "num_transacciones": count or 0,
-        "ticket_promedio": float(avg or 0)
+        "usd": {
+            "total": float(total_usd or 0),
+            "transacciones": count_usd or 0,
+            "ticket_promedio": ticket_usd
+        },
+        "pen": {
+            "total": float(total_pen_original or 0),
+            "transacciones": count_pen or 0,
+            "ticket_promedio": ticket_pen
+        },
+        "total_transacciones": count or 0
     }

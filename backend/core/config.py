@@ -17,14 +17,16 @@ class Settings(BaseSettings):
     anthropic_api_key: str
 
     # Security
+    secret_key: str  # Requerido para JWT
     allowed_origins: str = "https://gtl.pe,https://www.gtl.pe"
+    auth_enabled: bool = False  # Toggle de autenticación
 
     # Conversion rates (puede ser actualizado dinámicamente)
     default_usd_to_pen_rate: float = 3.72
 
     # Application
     app_name: str = "Sistema Financiero GTL"
-    app_version: str = "1.0.0"
+    app_version: str = "1.1.0"
     debug: bool = False
 
     # Database connection pool
@@ -60,6 +62,8 @@ except Exception as e:
     print(f"\n📝 Crea un archivo .env con:")
     print(f"   DATABASE_URL=postgresql://user:pass@localhost:5432/dbname")
     print(f"   ANTHROPIC_API_KEY=sk-ant-...")
+    print(f"   SECRET_KEY=tu-clave-secreta-aqui")
     print(f"   ALLOWED_ORIGINS=https://gtl.pe,https://www.gtl.pe")
+    print(f"   AUTH_ENABLED=false")
     print(f"   DEBUG=false")
     raise

@@ -1,3 +1,4 @@
+from api.dependencies import get_current_user
 """Ingresos API routes."""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session

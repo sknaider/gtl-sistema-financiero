@@ -7,26 +7,26 @@ import Select from '../../components/common/Select';
 import Table from '../../components/common/Table';
 import Loading from '../../components/common/Loading';
 import { useApp } from '../../context/AppContext';
-import { costosService } from '../../services/costosService';
-import { tiposCostoService } from '../../services/tiposCostoService';
-import { TIPOS_COSTO, MONEDAS } from '../../utils/constants';
+import { ingresosService } from '../../services/ingresosService';
+import { empresasService } from '../../services/empresasService';
+import { MONEDAS } from '../../utils/constants';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
-const CostosPage = () => {
+const IngresosPage = () => {
   const { mesSeleccionado } = useApp();
-  const [costos, setCostos] = useState([]);
-  const [tiposCosto, setTiposCosto] = useState([]);
+  const [ingresos, setIngresos] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     fecha: new Date().toISOString().split('T')[0],
-    concepto: '',
-    monto: '',
-    tipo: 'OPERATIVO',
-    moneda: 'PEN',
+    empresa_id: '',
+    descripcion: '',
     awb: '',
+    moneda: 'USD',
+    monto: '',
     mes: mesSeleccionado
   });
   
@@ -37,14 +37,14 @@ const CostosPage = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [costosData, kpisData, tiposData] = await Promise.all([
-        costosService.getAll(mesSeleccionado),
-        costosService.getKPIs(mesSeleccionado),
-        tiposCostoService.getAll()
+      const [ingresosData, empresasData, kpisData] = await Promise.all([
+        ingresosService.getAll(mesSeleccionado),
+        empresasService.getAll(),
+        ingresosService.getKPIs(mesSeleccionado)
       ]);
-      setCostos(costosData);
+      setIngresos(ingresosData);
+      setEmpresas(empresasData);
       setKpis(kpisData);
-      setTiposCosto(tiposData);
     } catch (error) {
       console.error('Error cargando datos:', error);
       alert('Error al cargar los datos');
@@ -58,53 +58,56 @@ const CostosPage = () => {
     setSubmitting(true);
     
     try {
-      await costosService.create({
+      await ingresosService.create({
         ...formData,
         mes: mesSeleccionado,
-        monto: parseFloat(formData.monto)
+        monto: parseFloat(formData.monto),
+        empresa_id: parseInt(formData.empresa_id)
       });
       
+      // Resetear formulario
       setFormData({
         fecha: new Date().toISOString().split('T')[0],
-        concepto: '',
-        monto: '',
-        tipo: 'OPERATIVO',
-        moneda: 'PEN',
+        empresa_id: '',
+        descripcion: '',
         awb: '',
+        moneda: 'USD',
+        monto: '',
         mes: mesSeleccionado
       });
       
+      // Recargar datos
       await loadData();
-      alert('Costo creado exitosamente');
+      alert('Ingreso creado exitosamente');
     } catch (error) {
-      console.error('Error creando costo:', error);
-      alert('Error al crear el costo');
+      console.error('Error creando ingreso:', error);
+      alert('Error al crear el ingreso');
     } finally {
       setSubmitting(false);
     }
   };
   
   const handleDelete = async (id) => {
-    if (!confirm('¿Está seguro de eliminar este costo?')) return;
+    if (!confirm('¿Está seguro de eliminar este ingreso?')) return;
     
     try {
-      await costosService.delete(id);
+      await ingresosService.delete(id);
       await loadData();
-      alert('Costo eliminado exitosamente');
+      alert('Ingreso eliminado exitosamente');
     } catch (error) {
-      console.error('Error eliminando costo:', error);
-      alert('Error al eliminar el costo');
+      console.error('Error eliminando ingreso:', error);
+      alert('Error al eliminar el ingreso');
     }
   };
   
   const columns = [
     { key: 'numero', label: 'N°', sortable: true },
     { key: 'fecha', label: 'Fecha', sortable: true, render: (row) => formatDate(row.fecha) },
-    { key: 'concepto', label: 'Concepto', sortable: true },
-    { key: 'tipo', label: 'Tipo', sortable: true },
-    { key: 'moneda', label: 'Moneda', sortable: true },
+    { key: 'descripcion', label: 'Descripción', sortable: true },
     { key: 'awb', label: 'AWB', sortable: true },
-    { key: 'monto', label: 'Monto', sortable: true, render: (row) => formatCurrency(row.monto, row.moneda || 'PEN') },
+    { key: 'moneda', label: 'Moneda', sortable: true },
+    { key: 'monto', label: 'Monto', sortable: true, render: (row) => formatCurrency(row.monto, row.moneda) },
+    { key: 'monto_pen', label: 'Monto PEN', sortable: true, render: (row) => formatCurrency(row.monto_pen, 'PEN') },
     { 
       key: 'actions', 
       label: 'Acciones',
@@ -113,7 +116,10 @@ const CostosPage = () => {
           variant="danger"
           size="sm"
           icon={Trash2}
-          onClick={() => handleDelete(row.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete(row.id);
+          }}
         >
           Eliminar
         </Button>
@@ -121,47 +127,57 @@ const CostosPage = () => {
     }
   ];
   
-  if (loading) return <Loading fullScreen text="Cargando costos..." />;
+  if (loading) return <Loading fullScreen text="Cargando ingresos..." />;
   
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gtl-gray">Módulo de Costos</h1>
+        <h1 className="text-3xl font-bold text-gtl-gray">Módulo de Ingresos</h1>
         <div className="text-sm text-gray-600">
           Mes: <span className="font-semibold">{mesSeleccionado}</span>
         </div>
       </div>
       
+      {/* KPIs */}
       {kpis && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <div className="text-center">
-              <p className="text-sm text-gray-600">Costo Mensual</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">
-                {formatCurrency(kpis.costo_mensual, 'PEN')}
+              <p className="text-sm text-gray-600">Ingreso en USD</p>
+              <p className="text-2xl font-bold text-blue-600 mt-2">
+                ${kpis.ingreso_mensual_usd?.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </p>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Ingreso en PEN</p>
+              <p className="text-2xl font-bold text-green-600 mt-2">
+                S/ {kpis.ingreso_mensual_pen_nativo?.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               </p>
             </div>
           </Card>
           <Card>
             <div className="text-center">
               <p className="text-sm text-gray-600">Transacciones</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">
+              <p className="text-3xl font-bold text-indigo-600 mt-2">
                 {kpis.num_transacciones}
               </p>
             </div>
           </Card>
           <Card>
             <div className="text-center">
-              <p className="text-sm text-gray-600">Costo Promedio</p>
-              <p className="text-3xl font-bold text-purple-600 mt-2">
-                {formatCurrency(kpis.costo_promedio, 'PEN')}
+              <p className="text-sm text-gray-600">Ticket Promedio</p>
+              <p className="text-2xl font-bold text-purple-600 mt-2">
+                {formatCurrency(kpis.ticket_promedio, 'PEN')}
               </p>
             </div>
           </Card>
         </div>
       )}
       
-      <Card title="Nuevo Costo">
+      {/* Formulario */}
+      <Card title="Nuevo Ingreso">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
@@ -173,23 +189,24 @@ const CostosPage = () => {
             />
             
             <Select
-              label="Tipo"
+              label="Cliente"
               required
-              value={formData.tipo}
-              onChange={(e) => setFormData({...formData, tipo: e.target.value})}
-              options={tiposCosto.map(tipo => ({ value: tipo.nombre, label: tipo.nombre }))}
+              value={formData.empresa_id}
+              onChange={(e) => setFormData({...formData, empresa_id: e.target.value})}
+              options={empresas.map(emp => ({ value: emp.id, label: emp.nombre }))}
             />
             
             <Input
-              label="Concepto"
+              label="Descripción"
               required
-              value={formData.concepto}
-              onChange={(e) => setFormData({...formData, concepto: e.target.value})}
-              placeholder="Descripción del gasto..."
+              value={formData.descripcion}
+              onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+              placeholder="Servicio logístico..."
             />
             
             <Input
               label="AWB"
+              required
               value={formData.awb}
               onChange={(e) => setFormData({...formData, awb: e.target.value})}
               placeholder="074 7014 xxxx"
@@ -220,11 +237,11 @@ const CostosPage = () => {
               variant="secondary"
               onClick={() => setFormData({
                 fecha: new Date().toISOString().split('T')[0],
-                concepto: '',
-                monto: '',
-                tipo: 'OPERATIVO',
-                moneda: 'PEN',
+                empresa_id: '',
+                descripcion: '',
                 awb: '',
+                moneda: 'USD',
+                monto: '',
                 mes: mesSeleccionado
               })}
             >
@@ -236,17 +253,18 @@ const CostosPage = () => {
               icon={Plus}
               loading={submitting}
             >
-              Agregar Costo
+              Agregar Ingreso
             </Button>
           </div>
         </form>
       </Card>
       
-      <Card title={`Costos de ${mesSeleccionado}`} subtitle={`${costos.length} registros`}>
-        <Table columns={columns} data={costos} />
+      {/* Tabla */}
+      <Card title={`Ingresos de ${mesSeleccionado}`} subtitle={`${ingresos.length} registros`}>
+        <Table columns={columns} data={ingresos} />
       </Card>
     </div>
   );
 };
 
-export default CostosPage;
+export default IngresosPage;

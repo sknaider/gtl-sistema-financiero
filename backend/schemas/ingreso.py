@@ -7,6 +7,7 @@ from decimal import Decimal
 class IngresoBase(BaseModel):
     fecha: date
     empresa_id: Optional[int] = None
+    cliente_id: Optional[int] = None
     descripcion: Optional[str] = None
     awb: Optional[str] = None
     moneda: str = Field(default="PEN", pattern="^(USD|PEN)$")
@@ -25,6 +26,7 @@ class IngresoCreate(IngresoBase):
 class IngresoUpdate(BaseModel):
     fecha: Optional[date] = None
     empresa_id: Optional[int] = None
+    cliente_id: Optional[int] = None
     descripcion: Optional[str] = None
     awb: Optional[str] = None
     moneda: Optional[str] = None
