@@ -10,6 +10,7 @@ class Ingreso(Base):
     id = Column(Integer, primary_key=True, index=True)
     fecha = Column(Date, nullable=False, index=True)
     empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True)
     descripcion = Column(Text)
     awb = Column(String(50))
     moneda = Column(String(3), nullable=False, default="PEN")

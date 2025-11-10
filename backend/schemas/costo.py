@@ -9,6 +9,8 @@ class CostoBase(BaseModel):
     concepto: str
     monto: Decimal = Field(gt=0)
     tipo: Optional[str] = None
+    moneda: str = Field(default="PEN", pattern="^(USD|PEN)$")
+    awb: Optional[str] = None
     mes: str
     
     @validator('monto')
@@ -25,6 +27,8 @@ class CostoUpdate(BaseModel):
     concepto: Optional[str] = None
     monto: Optional[Decimal] = None
     tipo: Optional[str] = None
+    moneda: Optional[str] = None
+    awb: Optional[str] = None
     mes: Optional[str] = None
 
 class CostoResponse(CostoBase):

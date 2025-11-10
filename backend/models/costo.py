@@ -11,6 +11,8 @@ class Costo(Base):
     concepto = Column(String(255), nullable=False)
     monto = Column(Numeric(12, 2), nullable=False)
     tipo = Column(String(50))
+    moneda = Column(String(3), default="PEN")
+    awb = Column(String(50))
     mes = Column(String(20), nullable=False, index=True)
     numero = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -8,6 +8,7 @@ from models.pago import Pago
 from models.empresa import Empresa
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
+from services.conversion_service import get_rate_info
 from decimal import Decimal
 
 MESES_ORDEN = {
@@ -42,7 +43,7 @@ def get_kpis_mes(db: Session, mes: str) -> Dict:
             "cuentas_por_cobrar": {"total": 0.0, "pendientes": 0, "vencidas_30_dias": 0},
             "tendencia_3_meses": [],
             "top_clientes": [],
-            "tipo_cambio": {"valor": 3.75, "fecha": datetime.now().isoformat()},
+            "tipo_cambio": get_rate_info(),
             "alertas": []
         }
     
@@ -96,12 +97,36 @@ def get_kpis_mes(db: Session, mes: str) -> Dict:
     if total_por_cobrar > 0 and total_ingresos > 0 and total_por_cobrar > total_ingresos * 0.5:
         alertas.append({"tipo": "info", "mensaje": f"Cuentas por cobrar: ${total_por_cobrar:,.2f} (>50% de ingresos)"})
     
+    # Calcular ingresos por moneda
+    total_usd = db.query(func.sum(Ingreso.monto))\
+              .filter(Ingreso.mes == mes_upper, Ingreso.moneda == 'USD')\
+              .scalar() or 0
+    
+    total_pen = db.query(func.sum(Ingreso.monto))\
+              .filter(Ingreso.mes == mes_upper, Ingreso.moneda == 'PEN')\
+              .scalar() or 0
+    
+    count_usd = db.query(func.count(Ingreso.id))\
+              .filter(Ingreso.mes == mes_upper, Ingreso.moneda == 'USD')\
+              .scalar() or 0
+    
+    count_pen = db.query(func.count(Ingreso.id))\
+              .filter(Ingreso.mes == mes_upper, Ingreso.moneda == 'PEN')\
+              .scalar() or 0
+    
+    ticket_usd = float(total_usd / count_usd) if count_usd > 0 else 0
+    ticket_pen = float(total_pen / count_pen) if count_pen > 0 else 0
+    
     return {
         "mes_actual": {"mes": mes_upper, "ingresos": float(utilidad_actual.total_ingresos), "costos": float(utilidad_actual.total_costos), "utilidad_neta": float(utilidad_actual.utilidad_neta), "margen": float(utilidad_actual.margen), "cambio_ingresos": round(cambio_ingresos, 1), "cambio_costos": round(cambio_costos, 1), "cambio_utilidad": round(cambio_utilidad, 1)},
+        "ingresos_por_moneda": {
+            "usd": {"total": float(total_usd), "transacciones": count_usd, "ticket_promedio": ticket_usd},
+            "pen": {"total": float(total_pen), "transacciones": count_pen, "ticket_promedio": ticket_pen}
+        },
         "cuentas_por_cobrar": {"total": round(total_por_cobrar, 2), "pendientes": len(pagos_pendientes), "vencidas_30_dias": vencidos},
         "tendencia_3_meses": tendencia,
         "top_clientes": top_clientes_list,
-        "tipo_cambio": {"valor": 3.75, "fecha": datetime.now().isoformat()},
+        "tipo_cambio": get_rate_info(),
         "alertas": alertas
     }
 
