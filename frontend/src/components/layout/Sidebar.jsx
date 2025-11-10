@@ -7,7 +7,8 @@ import {
   BarChart3,
   Building2,
   X
-} from 'lucide-react';
+} from 'lucide-react'
+import { Settings } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { MESES } from '../../utils/constants';
@@ -17,9 +18,10 @@ const Sidebar = ({ isOpen, onClose }) => {
   
   const menuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-    { path: '/empresas', icon: Building2, label: 'Empresas' },
+    { path: '/clientes', icon: Building2, label: 'Clientes' },
     { path: '/ingresos', icon: TrendingUp, label: 'Ingresos' },
     { path: '/costos', icon: TrendingDown, label: 'Costos' },
+    { path: '/tipos-costo', icon: Settings, label: 'Tipos de Costo' },
     { path: '/utilidades', icon: Calculator, label: 'Utilidades' },
     { path: '/pagos', icon: CreditCard, label: 'Pagos' },
     { path: '/graficos', icon: BarChart3, label: 'Gráficos' },

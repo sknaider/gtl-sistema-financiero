@@ -8,21 +8,21 @@ import Table from '../../components/common/Table';
 import Loading from '../../components/common/Loading';
 import { useApp } from '../../context/AppContext';
 import { ingresosService } from '../../services/ingresosService';
-import { clientesService } from '../../services/clientesService';
+import { empresasService } from '../../services/empresasService';
 import { MONEDAS } from '../../utils/constants';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 const IngresosPage = () => {
   const { mesSeleccionado } = useApp();
   const [ingresos, setIngresos] = useState([]);
-  const [clientes, setClientes] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     fecha: new Date().toISOString().split('T')[0],
-    cliente_id: '',
+    empresa_id: '',
     descripcion: '',
     awb: '',
     moneda: 'USD',
@@ -37,13 +37,13 @@ const IngresosPage = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [ingresosData, clientesData, kpisData] = await Promise.all([
+      const [ingresosData, empresasData, kpisData] = await Promise.all([
         ingresosService.getAll(mesSeleccionado),
-        clientesService.getAll(),
+        empresasService.getAll(),
         ingresosService.getKPIs(mesSeleccionado)
       ]);
       setIngresos(ingresosData);
-      setClientes(clientesData);
+      setEmpresas(empresasData);
       setKpis(kpisData);
     } catch (error) {
       console.error('Error cargando datos:', error);
@@ -62,12 +62,12 @@ const IngresosPage = () => {
         ...formData,
         mes: mesSeleccionado,
         monto: parseFloat(formData.monto),
-        cliente_id: parseInt(formData.cliente_id)
+        empresa_id: parseInt(formData.empresa_id)
       });
       
       setFormData({
         fecha: new Date().toISOString().split('T')[0],
-        cliente_id: '',
+        empresa_id: '',
         descripcion: '',
         awb: '',
         moneda: 'USD',
@@ -210,9 +210,9 @@ const IngresosPage = () => {
             <Select
               label="Cliente"
               required
-              value={formData.cliente_id}
-              onChange={(e) => setFormData({...formData, cliente_id: e.target.value})}
-              options={clientes.map(cli => ({ value: cli.id, label: cli.nombre }))}
+              value={formData.empresa_id}
+              onChange={(e) => setFormData({...formData, empresa_id: e.target.value})}
+              options={empresas.map(emp => ({ value: emp.id, label: emp.nombre }))}
             />
             
             <Input
@@ -256,7 +256,7 @@ const IngresosPage = () => {
               variant="secondary"
               onClick={() => setFormData({
                 fecha: new Date().toISOString().split('T')[0],
-                cliente_id: '',
+                empresa_id: '',
                 descripcion: '',
                 awb: '',
                 moneda: 'USD',
