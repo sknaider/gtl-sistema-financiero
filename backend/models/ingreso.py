@@ -1,5 +1,5 @@
 """Ingreso model - Transacciones de ingresos."""
-from sqlalchemy import Column, Integer, String, Date, Numeric, DateTime, ForeignKey, Text, Index
+from sqlalchemy import Column, Index, Integer, String, Date, Numeric, DateTime, ForeignKey, Text, 
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
@@ -13,7 +13,7 @@ class Ingreso(Base):
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True, index=True)  # ✅ Nuevo campo con índice
     descripcion = Column(Text)
     awb = Column(String(50), index=True)  # ✅ Agregado índice para búsquedas
-    moneda = Column(String(3), nullable=False, default="PEN")
+    moneda = Column(String(3), nullable=False, default="PEN", index=True)
     monto = Column(Numeric(12, 2), nullable=False)
     monto_pen = Column(Numeric(12, 2))
     mes = Column(String(20), nullable=False, index=True)

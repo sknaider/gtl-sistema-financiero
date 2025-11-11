@@ -1,5 +1,5 @@
 """Costo model - Transacciones de costos."""
-from sqlalchemy import Column, Integer, String, Date, Numeric, DateTime, Index
+from sqlalchemy import Column, Index, Integer, String, Date, Numeric, DateTime, 
 from datetime import datetime
 from core.database import Base
 
@@ -11,7 +11,7 @@ class Costo(Base):
     concepto = Column(String(255), nullable=False)
     monto = Column(Numeric(12, 2), nullable=False)
     tipo = Column(String(50), index=True)  # ✅ Agregado índice para filtros por tipo
-    moneda = Column(String(3), default="PEN")  # ✅ Nuevo campo
+    moneda = Column(String(3), default="PEN", index=True)  # ✅ Nuevo campo
     awb = Column(String(50), index=True)  # ✅ Nuevo campo con índice
     mes = Column(String(20), nullable=False, index=True)
     numero = Column(Integer)

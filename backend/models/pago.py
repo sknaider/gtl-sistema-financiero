@@ -1,5 +1,5 @@
 """Pago model - Cuentas por cobrar."""
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Index
+from sqlalchemy import Column, Index, Integer, String, Date, DateTime, ForeignKey, 
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
