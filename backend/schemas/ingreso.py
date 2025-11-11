@@ -1,5 +1,5 @@
 """Pydantic schemas for Ingreso."""
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, field_validator, ValidationError, Field, validator
 from datetime import date
 from typing import Optional
 from decimal import Decimal
@@ -37,6 +37,13 @@ class IngresoResponse(IngresoBase):
     id: int
     monto_pen: Optional[Decimal]
     numero: Optional[int]
+    
+    
+    @field_validator('cliente_id', 'empresa_id')
+    @classmethod
+    def validate_cliente_o_empresa(cls, v, info):
+        # Esta validación se ejecuta después, en el endpoint
+        return v
     
     class Config:
         from_attributes = True

@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 from models.ingreso import Ingreso
+from models.pago import Pago
 from schemas.ingreso import IngresoCreate, IngresoUpdate
 from services.conversion_service import convert_to_pen
 from datetime import date
@@ -25,6 +26,26 @@ def create_ingreso(db: Session, ingreso: IngresoCreate) -> Ingreso:
     db.add(db_ingreso)
     db.commit()
     db.refresh(db_ingreso)
+    
+    # 🆕 AUTO-CREATE PAGO if AWB exists
+    if ingreso.awb and ingreso.awb.strip():
+        if ingreso.empresa_id or ingreso.cliente_id:
+            # Check if pago already exists
+            existing_pago = db.query(Pago).filter(
+                Pago.awb == ingreso.awb,
+                Pago.mes == ingreso.mes
+            ).first()
+            
+            if not existing_pago:
+                nuevo_pago = Pago(
+                    empresa_id=ingreso.empresa_id,
+                    cliente_id=ingreso.cliente_id,
+                    awb=ingreso.awb,
+                    mes=ingreso.mes,
+                    estado="NO PAGADO"
+                )
+                db.add(nuevo_pago)
+                db.commit()
     
     # Trigger utilidad recalculation
     from services.utilidad_service import recalcular_utilidad_mes

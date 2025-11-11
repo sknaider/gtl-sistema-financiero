@@ -1,5 +1,5 @@
 """Costo model - Transacciones de costos."""
-from sqlalchemy import Column, Index, Integer, String, Date, Numeric, DateTime, 
+from sqlalchemy import Column, Index, Integer, String, Date, Numeric, DateTime
 from datetime import datetime
 from core.database import Base
 

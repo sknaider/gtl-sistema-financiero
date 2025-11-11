@@ -12,6 +12,13 @@ router = APIRouter(tags=["ingresos"])
 @router.post("/", response_model=IngresoResponse, status_code=201)
 def crear_ingreso(ingreso: IngresoCreate, db: Session = Depends(get_db)):
     """Create new ingreso."""
+    # Validar que tenga cliente_id O empresa_id
+    if not ingreso.cliente_id and not ingreso.empresa_id:
+        raise HTTPException(
+            status_code=400,
+            detail="El ingreso debe tener un cliente_id o empresa_id"
+        )
+    
     return ingreso_service.create_ingreso(db, ingreso)
 
 @router.get("/", response_model=List[IngresoResponse])

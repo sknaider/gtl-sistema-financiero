@@ -1,5 +1,5 @@
 """Pago model - Cuentas por cobrar."""
-from sqlalchemy import Column, Index, Integer, String, Date, DateTime, ForeignKey, 
+from sqlalchemy import Column, Index, Integer, String, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
@@ -8,7 +8,8 @@ class Pago(Base):
     __tablename__ = "pagos"
 
     id = Column(Integer, primary_key=True, index=True)
-    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)  # ✅ Agregado índice
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True, index=True)  # Ahora nullable
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True, index=True)  # ✅ Agregado índice
     awb = Column(String(50), nullable=False, index=True)  # ✅ Agregado índice para búsquedas por AWB
     estado = Column(String(20), default="NO PAGADO", index=True)
     mes = Column(String(20), nullable=False, index=True)  # ✅ Agregado índice
@@ -17,6 +18,7 @@ class Pago(Base):
 
     # Relationships
     empresa = relationship("Empresa", back_populates="pagos")
+    cliente = relationship("Cliente", back_populates="pagos")
 
     # Índices compuestos para queries comunes
     __table_args__ = (

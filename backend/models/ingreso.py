@@ -1,5 +1,5 @@
 """Ingreso model - Transacciones de ingresos."""
-from sqlalchemy import Column, Index, Integer, String, Date, Numeric, DateTime, ForeignKey, Text, 
+from sqlalchemy import Column, event, Index, Integer, String, Date, Numeric, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
@@ -33,3 +33,17 @@ class Ingreso(Base):
 
     def __repr__(self):
         return f"<Ingreso {self.id}: {self.descripcion} - {self.monto}>"
+
+
+# Auto-derivar mes de la fecha
+@event.listens_for(Ingreso, 'before_insert')
+@event.listens_for(Ingreso, 'before_update')
+def derive_mes_from_fecha(mapper, connection, target):
+    """Deriva automáticamente el mes de la fecha."""
+    if target.fecha:
+        meses = {
+            1: 'ENERO', 2: 'FEBRERO', 3: 'MARZO', 4: 'ABRIL',
+            5: 'MAYO', 6: 'JUNIO', 7: 'JULIO', 8: 'AGOSTO',
+            9: 'SETIEMBRE', 10: 'OCTUBRE', 11: 'NOVIEMBRE', 12: 'DICIEMBRE'
+        }
+        target.mes = meses[target.fecha.month]

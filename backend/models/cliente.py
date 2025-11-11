@@ -15,4 +15,5 @@ class Cliente(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     empresas = relationship("Empresa", back_populates="cliente")
-    ingresos = relationship("Ingreso", back_populates="cliente")  # ✅ Faltaba esta relación
+    ingresos = relationship("Ingreso", back_populates="cliente")
+    pagos = relationship("Pago", back_populates="cliente")  # ✅ Faltaba esta relación

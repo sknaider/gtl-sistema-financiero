@@ -1,117 +1,100 @@
-"""Pagos API routes - Cuentas por cobrar."""
+"""Pagos routes - Cuentas por cobrar."""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
-from typing import Optional
-from datetime import date
+from typing import List, Optional
 from core.database import get_db
 from models.pago import Pago
 from models.empresa import Empresa
+from models.cliente import Cliente
+from models.ingreso import Ingreso
+from schemas.pago import PagoResponse, PagoUpdate, PagoEstadisticas
 
-router = APIRouter(tags=["pagos"])
+router = APIRouter()
 
-@router.get("/")
+@router.get("/", response_model=List[PagoResponse])
 def listar_pagos(
     mes: Optional[str] = None,
     estado: Optional[str] = None,
     skip: int = 0,
-    limit: int = Query(default=200, le=1000),  # Max 1000 registros
+    limit: int = Query(default=200, le=1000),
     db: Session = Depends(get_db)
 ):
     """List pagos with filters."""
     query = db.query(Pago)\
-              .join(Empresa)\
-              .options(joinedload(Pago.empresa))  # ✅ Eager loading para evitar N+1
-
+        .options(joinedload(Pago.empresa), joinedload(Pago.cliente))
+    
     if mes:
         query = query.filter(Pago.mes == mes)
-
     if estado:
         query = query.filter(Pago.estado == estado)
-
-    pagos = query.order_by(Empresa.nombre)\
+    
+    pagos = query.order_by(Pago.updated_at.desc())\
                  .offset(skip)\
                  .limit(limit)\
                  .all()
     
-    return [
-        {
-            "id": p.id,
-            "empresa_id": p.empresa_id,
-            "empresa_nombre": p.empresa.nombre,
-            "awb": p.awb,
-            "estado": p.estado,
-            "mes": p.mes,
-            "fecha_pago": p.fecha_pago
+    # Agregar nombre correcto a cada pago
+    result = []
+    for pago in pagos:
+        # Buscar fecha del ingreso
+        ingreso = db.query(Ingreso).filter(
+            Ingreso.awb == pago.awb,
+            Ingreso.mes == pago.mes
+        ).first()
+        
+        pago_dict = {
+            "id": pago.id,
+            "empresa_id": pago.empresa_id,
+            "cliente_id": pago.cliente_id,
+            "awb": pago.awb,
+            "estado": pago.estado,
+            "mes": pago.mes,
+            "fecha_pago": pago.fecha_pago,
+            "fecha_ingreso": ingreso.fecha if ingreso else None,
+            "updated_at": pago.updated_at,
+            "nombre_empresa": pago.cliente.nombre if pago.cliente else (pago.empresa.nombre if pago.empresa else "Sin nombre")
         }
-        for p in pagos
-    ]
-
-@router.get("/{pago_id}")
-def obtener_pago(pago_id: int, db: Session = Depends(get_db)):
-    """Get single pago."""
-    pago = db.query(Pago)\
-             .options(joinedload(Pago.empresa))\
-             .filter(Pago.id == pago_id)\
-             .first()
-    if not pago:
-        raise HTTPException(status_code=404, detail="Pago no encontrado")
+        result.append(pago_dict)
     
-    return {
-        "id": pago.id,
-        "empresa_id": pago.empresa_id,
-        "empresa_nombre": pago.empresa.nombre,
-        "awb": pago.awb,
-        "estado": pago.estado,
-        "mes": pago.mes,
-        "fecha_pago": pago.fecha_pago
-    }
+    return result
 
-@router.put("/{pago_id}/estado")
-def actualizar_estado_pago(
-    pago_id: int,
-    estado: str,
-    fecha_pago: Optional[date] = None,
-    db: Session = Depends(get_db)
-):
+@router.put("/{pago_id}", response_model=PagoResponse)
+def actualizar_pago(pago_id: int, pago_data: PagoUpdate, db: Session = Depends(get_db)):
     """Update pago status."""
-    if estado not in ["NO PAGADO", "PAGADO"]:
-        raise HTTPException(status_code=400, detail="Estado inválido")
-    
-    pago = db.query(Pago)\
-             .options(joinedload(Pago.empresa))\
-             .filter(Pago.id == pago_id)\
-             .first()
+    pago = db.query(Pago).filter(Pago.id == pago_id).first()
     if not pago:
-        raise HTTPException(status_code=404, detail="Pago no encontrado")
-
-    pago.estado = estado
-    if estado == "PAGADO" and fecha_pago:
-        pago.fecha_pago = fecha_pago
-
+        raise HTTPException(404, "Pago no encontrado")
+    
+    for field, value in pago_data.model_dump(exclude_unset=True).items():
+        setattr(pago, field, value)
+    
     db.commit()
     db.refresh(pago)
     
-    return {
+    # Agregar nombre
+    pago_dict = {
         "id": pago.id,
-        "empresa_nombre": pago.empresa.nombre,
+        "empresa_id": pago.empresa_id,
+        "cliente_id": pago.cliente_id,
         "awb": pago.awb,
         "estado": pago.estado,
-        "fecha_pago": pago.fecha_pago
+        "mes": pago.mes,
+        "fecha_pago": pago.fecha_pago,
+        "updated_at": pago.updated_at,
+        "nombre_empresa": pago.cliente.nombre if pago.cliente else (pago.empresa.nombre if pago.empresa else "Sin nombre")
     }
+    
+    return pago_dict
 
-@router.get("/mes/{mes}/estadisticas")
+@router.get("/mes/{mes}/estadisticas", response_model=PagoEstadisticas)
 def estadisticas_pagos(mes: str, db: Session = Depends(get_db)):
-    """Get payment statistics for month."""
+    """Get statistics for payments by month."""
     total = db.query(Pago).filter(Pago.mes == mes).count()
-    pagados = db.query(Pago).filter(
-        Pago.mes == mes,
-        Pago.estado == "PAGADO"
-    ).count()
+    pagados = db.query(Pago).filter(Pago.mes == mes, Pago.estado == "PAGADO").count()
+    pendientes = total - pagados
     
     return {
-        "mes": mes,
-        "total_cuentas": total,
+        "total": total,
         "pagados": pagados,
-        "pendientes": total - pagados,
-        "porcentaje_cobrado": (pagados / total * 100) if total > 0 else 0
+        "pendientes": pendientes
     }
