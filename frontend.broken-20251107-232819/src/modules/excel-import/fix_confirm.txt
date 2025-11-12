@@ -1,0 +1,1 @@
+    if (!confirm(`¿Importar TODAS las ${sheets.length} hojas automáticamente?\n\nEsto procesará:\n${sheets.join('\n')}`)) {

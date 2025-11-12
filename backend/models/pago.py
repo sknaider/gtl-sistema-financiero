@@ -6,20 +6,22 @@ from core.database import Base
 
 class Pago(Base):
     __tablename__ = "pagos"
-
+    
     id = Column(Integer, primary_key=True, index=True)
-    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True, index=True)  # Ahora nullable
-    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True, index=True)  # ✅ Agregado índice
-    awb = Column(String(50), nullable=False, index=True)  # ✅ Agregado índice para búsquedas por AWB
+    ingreso_id = Column(Integer, ForeignKey("ingresos.id", ondelete="CASCADE"), nullable=True)  # 🆕 AGREGADO
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True, index=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True, index=True)
+    awb = Column(String(50), nullable=False, index=True)
     estado = Column(String(20), default="NO PAGADO", index=True)
-    mes = Column(String(20), nullable=False, index=True)  # ✅ Agregado índice
+    mes = Column(String(20), nullable=False, index=True)
     fecha_pago = Column(Date, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    
     # Relationships
+    ingreso = relationship("Ingreso", back_populates="pagos")  # 🆕 AGREGADO
     empresa = relationship("Empresa", back_populates="pagos")
     cliente = relationship("Cliente", back_populates="pagos")
-
+    
     # Índices compuestos para queries comunes
     __table_args__ = (
         Index('idx_pago_mes_estado', 'mes', 'estado'),

@@ -22,6 +22,7 @@ class Ingreso(Base):
 
     # Relationships
     empresa = relationship("Empresa", back_populates="ingresos")
+    pagos = relationship("Pago", back_populates="ingreso", cascade="all, delete-orphan")  # 🆕 Relación con pagos
     cliente = relationship("Cliente", back_populates="ingresos")
 
     # Índices compuestos para queries comunes

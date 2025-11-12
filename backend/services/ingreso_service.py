@@ -38,10 +38,11 @@ def create_ingreso(db: Session, ingreso: IngresoCreate) -> Ingreso:
             
             if not existing_pago:
                 nuevo_pago = Pago(
+                    ingreso_id=db_ingreso.id,
                     empresa_id=ingreso.empresa_id,
                     cliente_id=ingreso.cliente_id,
                     awb=ingreso.awb,
-                    mes=ingreso.mes,
+                    mes=db_ingreso.mes,  # 🔧 Usar mes del ingreso guardado
                     estado="NO PAGADO"
                 )
                 db.add(nuevo_pago)

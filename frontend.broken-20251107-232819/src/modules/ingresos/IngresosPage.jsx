@@ -8,21 +8,21 @@ import Table from '../../components/common/Table';
 import Loading from '../../components/common/Loading';
 import { useApp } from '../../context/AppContext';
 import { ingresosService } from '../../services/ingresosService';
-import { clientesService } from '../../services/clientesService';
+import { empresasService } from '../../services/empresasService';
 import { MONEDAS } from '../../utils/constants';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 const IngresosPage = () => {
   const { mesSeleccionado } = useApp();
   const [ingresos, setIngresos] = useState([]);
-  const [clientes, setClientes] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     fecha: new Date().toISOString().split('T')[0],
-    cliente_id: '',
+    empresa_id: '',
     descripcion: '',
     awb: '',
     moneda: 'USD',
@@ -37,13 +37,13 @@ const IngresosPage = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [ingresosData, clientesData, kpisData] = await Promise.all([
+      const [ingresosData, empresasData, kpisData] = await Promise.all([
         ingresosService.getAll(mesSeleccionado),
-        clientesService.getAll(),
+        empresasService.getAll(),
         ingresosService.getKPIs(mesSeleccionado)
       ]);
       setIngresos(ingresosData);
-      setClientes(clientesData);
+      setEmpresas(empresasData);
       setKpis(kpisData);
     } catch (error) {
       console.error('Error cargando datos:', error);
@@ -62,12 +62,13 @@ const IngresosPage = () => {
         ...formData,
         mes: mesSeleccionado,
         monto: parseFloat(formData.monto),
-        cliente_id: parseInt(formData.cliente_id)
+        empresa_id: parseInt(formData.empresa_id)
       });
       
+      // Resetear formulario
       setFormData({
         fecha: new Date().toISOString().split('T')[0],
-        cliente_id: '',
+        empresa_id: '',
         descripcion: '',
         awb: '',
         moneda: 'USD',
@@ -75,6 +76,7 @@ const IngresosPage = () => {
         mes: mesSeleccionado
       });
       
+      // Recargar datos
       await loadData();
       alert('Ingreso creado exitosamente');
     } catch (error) {
@@ -101,7 +103,6 @@ const IngresosPage = () => {
   const columns = [
     { key: 'numero', label: 'N°', sortable: true },
     { key: 'fecha', label: 'Fecha', sortable: true, render: (row) => formatDate(row.fecha) },
-    { key: 'cliente', label: 'Cliente', sortable: true, render: (row) => clientes.find(c => c.id === row.cliente_id)?.nombre || '-' },
     { key: 'descripcion', label: 'Descripción', sortable: true },
     { key: 'awb', label: 'AWB', sortable: true },
     { key: 'moneda', label: 'Moneda', sortable: true },
@@ -137,66 +138,37 @@ const IngresosPage = () => {
         </div>
       </div>
       
+      {/* KPIs */}
       {kpis && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-700 border-b pb-3 mb-4">
-                OPERACIONES EN USD
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Total:</span>
-                  <span className="text-2xl font-bold text-blue-600">
-                    ${kpis.usd?.total?.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Transacciones:</span>
-                  <span className="text-xl font-semibold text-gray-800">
-                    {kpis.usd?.transacciones || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center border-t pt-3">
-                  <span className="text-gray-600">Ticket Promedio:</span>
-                  <span className="text-lg font-medium text-indigo-600">
-                    ${kpis.usd?.ticket_promedio?.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                  </span>
-                </div>
-              </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Ingreso Mensual</p>
+              <p className="text-3xl font-bold text-green-600 mt-2">
+                {formatCurrency(kpis.ingreso_mensual, 'PEN')}
+              </p>
             </div>
           </Card>
-
           <Card>
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-700 border-b pb-3 mb-4">
-                OPERACIONES EN PEN
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Total:</span>
-                  <span className="text-2xl font-bold text-green-600">
-                    S/ {kpis.pen?.total?.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Transacciones:</span>
-                  <span className="text-xl font-semibold text-gray-800">
-                    {kpis.pen?.transacciones || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center border-t pt-3">
-                  <span className="text-gray-600">Ticket Promedio:</span>
-                  <span className="text-lg font-medium text-purple-600">
-                    S/ {kpis.pen?.ticket_promedio?.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                  </span>
-                </div>
-              </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Transacciones</p>
+              <p className="text-3xl font-bold text-blue-600 mt-2">
+                {kpis.num_transacciones}
+              </p>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Ticket Promedio</p>
+              <p className="text-3xl font-bold text-purple-600 mt-2">
+                {formatCurrency(kpis.ticket_promedio, 'PEN')}
+              </p>
             </div>
           </Card>
         </div>
       )}
       
+      {/* Formulario */}
       <Card title="Nuevo Ingreso">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -211,9 +183,9 @@ const IngresosPage = () => {
             <Select
               label="Cliente"
               required
-              value={formData.cliente_id}
-              onChange={(e) => setFormData({...formData, cliente_id: e.target.value})}
-              options={clientes.map(cli => ({ value: cli.id, label: cli.nombre }))}
+              value={formData.empresa_id}
+              onChange={(e) => setFormData({...formData, empresa_id: e.target.value})}
+              options={empresas.map(emp => ({ value: emp.id, label: emp.nombre }))}
             />
             
             <Input
@@ -257,7 +229,7 @@ const IngresosPage = () => {
               variant="secondary"
               onClick={() => setFormData({
                 fecha: new Date().toISOString().split('T')[0],
-                cliente_id: '',
+                empresa_id: '',
                 descripcion: '',
                 awb: '',
                 moneda: 'USD',
@@ -279,6 +251,7 @@ const IngresosPage = () => {
         </form>
       </Card>
       
+      {/* Tabla */}
       <Card title={`Ingresos de ${mesSeleccionado}`} subtitle={`${ingresos.length} registros`}>
         <Table columns={columns} data={ingresos} />
       </Card>
