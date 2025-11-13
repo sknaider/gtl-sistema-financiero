@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -13,12 +13,13 @@ import { MONEDAS } from '../../utils/constants';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 const IngresosPage = () => {
-  const { mesSeleccionado } = useApp();
+  const { mesSeleccionado, añoSeleccionado } = useApp();
   const [ingresos, setIngresos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   
   const [formData, setFormData] = useState({
     fecha: new Date().toISOString().split('T')[0],
@@ -32,19 +33,31 @@ const IngresosPage = () => {
   
   useEffect(() => {
     loadData();
-  }, [mesSeleccionado]);
+  }, [mesSeleccionado, añoSeleccionado]);
   
   const loadData = async () => {
     setLoading(true);
     try {
       const [ingresosData, clientesData, kpisData] = await Promise.all([
-        ingresosService.getAll(mesSeleccionado),
+        ingresosService.getAll(mesSeleccionado, añoSeleccionado),
         clientesService.getAll(),
-        ingresosService.getKPIs(mesSeleccionado)
+        ingresosService.getKpis(mesSeleccionado, añoSeleccionado)
       ]);
       setIngresos(ingresosData);
       setClientes(clientesData);
-      setKpis(kpisData);
+      const transformedKpis = {
+        usd: {
+          total: kpisData.total_ingresos_usd || 0,
+          transacciones: kpisData.cantidad_transacciones || 0,
+          ticket_promedio: kpisData.ticket_promedio_usd || 0
+        },
+        pen: {
+          total: kpisData.total_ingresos_pen || 0,
+          transacciones: kpisData.cantidad_transacciones || 0,
+          ticket_promedio: kpisData.ticket_promedio_pen || 0
+        }
+      };
+      setKpis(transformedKpis);
     } catch (error) {
       console.error('Error cargando datos:', error);
       alert('Error al cargar los datos');
@@ -58,12 +71,21 @@ const IngresosPage = () => {
     setSubmitting(true);
     
     try {
-      await ingresosService.create({
+      const ingresoData = {
         ...formData,
         mes: mesSeleccionado,
         monto: parseFloat(formData.monto),
         cliente_id: parseInt(formData.cliente_id)
-      });
+      };
+
+      if (editingId) {
+        await ingresosService.update(editingId, ingresoData);
+        alert('Ingreso actualizado exitosamente');
+        setEditingId(null);
+      } else {
+        await ingresosService.create(ingresoData);
+        alert('Ingreso creado exitosamente');
+      }
       
       setFormData({
         fecha: new Date().toISOString().split('T')[0],
@@ -76,10 +98,9 @@ const IngresosPage = () => {
       });
       
       await loadData();
-      alert('Ingreso creado exitosamente');
     } catch (error) {
-      console.error('Error creando ingreso:', error);
-      alert('Error al crear el ingreso');
+      console.error('Error al guardar el ingreso:', error);
+      alert('Error al guardar el ingreso');
     } finally {
       setSubmitting(false);
     }
@@ -97,6 +118,19 @@ const IngresosPage = () => {
       alert('Error al eliminar el ingreso');
     }
   };
+
+  const handleEdit = (ingreso) => {
+    setFormData({
+      fecha: ingreso.fecha,
+      cliente_id: ingreso.cliente_id,
+      descripcion: ingreso.descripcion,
+      awb: ingreso.awb,
+      moneda: ingreso.moneda,
+      monto: ingreso.monto,
+      mes: ingreso.mes
+    });
+    setEditingId(ingreso.id);
+  };
   
   const columns = [
     { key: 'numero', label: 'N°', sortable: true },
@@ -111,17 +145,30 @@ const IngresosPage = () => {
       key: 'actions', 
       label: 'Acciones',
       render: (row) => (
-        <Button
-          variant="danger"
-          size="sm"
-          icon={Trash2}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete(row.id);
-          }}
-        >
-          Eliminar
-        </Button>
+        <div className="flex gap-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={Edit}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(row);
+            }}
+          >
+            Editar
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            icon={Trash2}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row.id);
+            }}
+          >
+            Eliminar
+          </Button>
+        </div>
       )
     }
   ];
@@ -255,15 +302,18 @@ const IngresosPage = () => {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setFormData({
-                fecha: new Date().toISOString().split('T')[0],
-                cliente_id: '',
-                descripcion: '',
-                awb: '',
-                moneda: 'USD',
-                monto: '',
-                mes: mesSeleccionado
-              })}
+              onClick={() => {
+                setFormData({
+                  fecha: new Date().toISOString().split('T')[0],
+                  cliente_id: '',
+                  descripcion: '',
+                  awb: '',
+                  moneda: 'USD',
+                  monto: '',
+                  mes: mesSeleccionado
+                });
+                setEditingId(null);
+              }}
             >
               Limpiar
             </Button>
@@ -273,7 +323,7 @@ const IngresosPage = () => {
               icon={Plus}
               loading={submitting}
             >
-              Agregar Ingreso
+              {editingId ? 'Actualizar Ingreso' : 'Agregar Ingreso'}
             </Button>
           </div>
         </form>

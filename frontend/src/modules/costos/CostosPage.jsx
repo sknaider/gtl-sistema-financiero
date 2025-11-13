@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -19,6 +19,7 @@ const CostosPage = () => {
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   
   const [formData, setFormData] = useState({
     fecha: new Date().toISOString().split('T')[0],
@@ -39,7 +40,7 @@ const CostosPage = () => {
     try {
       const [costosData, kpisData, tiposData] = await Promise.all([
         costosService.getAll(mesSeleccionado),
-        costosService.getKPIs(mesSeleccionado),
+        costosService.getKpis(mesSeleccionado),
         tiposCostoService.getAll()
       ]);
       setCostos(costosData);
@@ -53,16 +54,46 @@ const CostosPage = () => {
     }
   };
   
+  const calcularKPIsPorMoneda = () => {
+    const costosUSD = costos.filter(c => c.moneda === 'USD');
+    const costosPEN = costos.filter(c => c.moneda === 'PEN');
+    
+    const totalUSD = costosUSD.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0);
+    const totalPEN = costosPEN.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0);
+    
+    return {
+      usd: {
+        total: totalUSD,
+        transacciones: costosUSD.length,
+        promedio: costosUSD.length > 0 ? totalUSD / costosUSD.length : 0
+      },
+      pen: {
+        total: totalPEN,
+        transacciones: costosPEN.length,
+        promedio: costosPEN.length > 0 ? totalPEN / costosPEN.length : 0
+      }
+    };
+  };
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     
     try {
-      await costosService.create({
+      const costoData = {
         ...formData,
         mes: mesSeleccionado,
         monto: parseFloat(formData.monto)
-      });
+      };
+
+      if (editingId) {
+        await costosService.update(editingId, costoData);
+        alert('Costo actualizado exitosamente');
+        setEditingId(null);
+      } else {
+        await costosService.create(costoData);
+        alert('Costo creado exitosamente');
+      }
       
       setFormData({
         fecha: new Date().toISOString().split('T')[0],
@@ -75,10 +106,9 @@ const CostosPage = () => {
       });
       
       await loadData();
-      alert('Costo creado exitosamente');
     } catch (error) {
-      console.error('Error creando costo:', error);
-      alert('Error al crear el costo');
+      console.error('Error al guardar el costo:', error);
+      alert('Error al guardar el costo');
     } finally {
       setSubmitting(false);
     }
@@ -96,6 +126,19 @@ const CostosPage = () => {
       alert('Error al eliminar el costo');
     }
   };
+
+  const handleEdit = (costo) => {
+    setFormData({
+      fecha: costo.fecha,
+      concepto: costo.concepto,
+      monto: costo.monto,
+      tipo: costo.tipo,
+      moneda: costo.moneda,
+      awb: costo.awb || '',
+      mes: costo.mes
+    });
+    setEditingId(costo.id);
+  };
   
   const columns = [
     { key: 'numero', label: 'N°', sortable: true },
@@ -109,19 +152,37 @@ const CostosPage = () => {
       key: 'actions', 
       label: 'Acciones',
       render: (row) => (
-        <Button
-          variant="danger"
-          size="sm"
-          icon={Trash2}
-          onClick={() => handleDelete(row.id)}
-        >
-          Eliminar
-        </Button>
+        <div className="flex gap-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={Edit}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(row);
+            }}
+          >
+            Editar
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            icon={Trash2}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row.id);
+            }}
+          >
+            Eliminar
+          </Button>
+        </div>
       )
     }
   ];
   
   if (loading) return <Loading fullScreen text="Cargando costos..." />;
+  
+  const kpisPorMoneda = calcularKPIsPorMoneda();
   
   return (
     <div className="space-y-6">
@@ -132,34 +193,67 @@ const CostosPage = () => {
         </div>
       </div>
       
-      {kpis && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Costo Mensual</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">
-                {formatCurrency(kpis.costo_mensual, 'PEN')}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">
+              OPERACIONES EN USD
+            </h3>
+            
+            <div>
+              <p className="text-sm text-gray-600">Total:</p>
+              <p className="text-3xl font-bold text-blue-600">
+                {formatCurrency(kpisPorMoneda.usd.total, 'USD')}
               </p>
             </div>
-          </Card>
-          <Card>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Transacciones</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">
-                {kpis.num_transacciones}
+            
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+              <div>
+                <p className="text-sm text-gray-600">Transacciones:</p>
+                <p className="text-xl font-semibold text-gray-800">
+                  {kpisPorMoneda.usd.transacciones}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Ticket Promedio:</p>
+                <p className="text-xl font-semibold text-gray-800">
+                  {formatCurrency(kpisPorMoneda.usd.promedio, 'USD')}
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        
+        <Card>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">
+              OPERACIONES EN PEN
+            </h3>
+            
+            <div>
+              <p className="text-sm text-gray-600">Total:</p>
+              <p className="text-3xl font-bold text-green-600">
+                {formatCurrency(kpisPorMoneda.pen.total, 'PEN')}
               </p>
             </div>
-          </Card>
-          <Card>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Costo Promedio</p>
-              <p className="text-3xl font-bold text-purple-600 mt-2">
-                {formatCurrency(kpis.costo_promedio, 'PEN')}
-              </p>
+            
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+              <div>
+                <p className="text-sm text-gray-600">Transacciones:</p>
+                <p className="text-xl font-semibold text-gray-800">
+                  {kpisPorMoneda.pen.transacciones}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Ticket Promedio:</p>
+                <p className="text-xl font-semibold text-gray-800">
+                  {formatCurrency(kpisPorMoneda.pen.promedio, 'PEN')}
+                </p>
+              </div>
             </div>
-          </Card>
-        </div>
-      )}
+          </div>
+        </Card>
+      </div>
       
       <Card title="Nuevo Costo">
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -218,15 +312,18 @@ const CostosPage = () => {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setFormData({
-                fecha: new Date().toISOString().split('T')[0],
-                concepto: '',
-                monto: '',
-                tipo: 'OPERATIVO',
-                moneda: 'PEN',
-                awb: '',
-                mes: mesSeleccionado
-              })}
+              onClick={() => {
+                setFormData({
+                  fecha: new Date().toISOString().split('T')[0],
+                  concepto: '',
+                  monto: '',
+                  tipo: 'OPERATIVO',
+                  moneda: 'PEN',
+                  awb: '',
+                  mes: mesSeleccionado
+                });
+                setEditingId(null);
+              }}
             >
               Limpiar
             </Button>
@@ -236,7 +333,7 @@ const CostosPage = () => {
               icon={Plus}
               loading={submitting}
             >
-              Agregar Costo
+              {editingId ? 'Actualizar Costo' : 'Agregar Costo'}
             </Button>
           </div>
         </form>
